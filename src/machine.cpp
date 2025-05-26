@@ -184,7 +184,6 @@ static int virt_machine_parse_config(VirtMachineParams *p, char *config_file_str
     char        buf1[256];
     JSONValue   cfg, obj, el;
     p->maxinsns      = 0;
-    p->dump_memories = false;
 
     cfg = json_parse_value_len(config_file_str, len);
     if (json_is_error(cfg)) {

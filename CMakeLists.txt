@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.5)
 #
 # Dromajo, a RISC-V Emulator (based on Fabrice Bellard's RISCVEMU/TinyEMU)
 #
@@ -39,6 +38,7 @@ cmake_minimum_required(VERSION 3.5)
 # THE SOFTWARE.
 #
 
+cmake_minimum_required(VERSION 3.5)
 set(CMAKE_CXX_STANDARD 11)
 project(dromajo)
 option(TRACEOS "TRACEOS" OFF)
@@ -54,14 +54,13 @@ add_compile_options(
         -g
         -Wall
         -Wno-parentheses
-        -MMD
         -D_FILE_OFFSET_BITS=64
         -D_LARGEFILE_SOURCE
         -D_GNU_SOURCE
         -D__STDC_FORMAT_MACROS
 )
 
-add_compile_options($<$<CONFIG:Release>:-Ofast>)
+add_compile_options($<$<CONFIG:Release>:-O3>)
 
 if (TRACEOS)
     message(STATUS "TRACEOS is on.")

@@ -570,7 +570,6 @@ static void usage(const char *prog, const char *msg) {
             "       --terminate-event name of the validate event to terminate execution\n"
             "       --trace start trace dump after a number of instructions. Trace disabled by default\n"
             "       --ignore_sbi_shutdown continue simulation even upon seeing the SBI_SHUTDOWN call\n"
-            "       --dump_memories dump memories that could be used to load a cosimulation\n"
             "       --memory_size sets the memory size in MiB (default 256 MiB)\n"
             "       --memory_addr sets the memory start address (default 0x%lx)\n"
             "       --bootrom load in a bootrom img file (default is dromajo bootrom)\n"
@@ -630,7 +629,6 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
     long        memory_size_override     = 0;
     uint64_t    memory_addr_override     = 0;
     bool        ignore_sbi_shutdown      = false;
-    bool        dump_memories            = false;
     char *      bootrom_name             = 0;
     char *      dtb_name                 = 0;
     bool        compact_bootrom          = false;
@@ -665,7 +663,6 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
             {"maxinsns",                required_argument, 0,  'm' }, // CFG
             {"trace   ",                required_argument, 0,  't' },
             {"ignore_sbi_shutdown",     required_argument, 0,  'P' }, // CFG
-            {"dump_memories",                 no_argument, 0,  'D' }, // CFG
             {"memory_size",             required_argument, 0,  'M' }, // CFG
             {"memory_addr",             required_argument, 0,  'A' }, // CFG
             {"bootrom",                 required_argument, 0,  'b' }, // CFG
@@ -742,8 +739,6 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
                 break;
 
             case 'P': ignore_sbi_shutdown = true; break;
-
-            case 'D': dump_memories = true; break;
 
             case 'M':
                 if (optarg[0] == '0' && optarg[1] == 'x')
@@ -898,8 +893,7 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
     /* open the files & devices */
     for (int i = 0; i < p->drive_count; i++) {
         BlockDevice *drive;
-        char *       fname;
-        fname = get_file_path(p->cfg_filename, p->tab_drive[i].filename);
+        char *fname = get_file_path(p->cfg_filename, p->tab_drive[i].filename);
 #ifdef CONFIG_FS_NET
         if (is_url(fname)) {
             net_completed = FALSE;
@@ -916,10 +910,9 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
     }
 
     for (int i = 0; i < p->fs_count; i++) {
-        FSDevice *  fs;
-        const char *path;
-        path = p->tab_fs[i].filename;
+        FSDevice *fs;
 #ifdef CONFIG_FS_NET
+        const char *path = p->tab_fs[i].filename;
         if (is_url(path)) {
             fs = fs_net_init(path, NULL, NULL);
             if (!fs)
@@ -932,8 +925,8 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
             fprintf(dromajo_stderr, "Filesystem access not supported yet\n");
             exit(1);
 #else
-            char *fname;
-            fname = get_file_path(p->cfg_filename, path);
+            const char *path = p->tab_fs[i].filename;
+            char *fname = get_file_path(p->cfg_filename, path);
             fs    = fs_disk_init(fname);
             if (!fs) {
                 fprintf(dromajo_stderr, "%s: must be a directory\n", fname);
@@ -967,7 +960,6 @@ RISCVMachine *virt_machine_main(int argc, char **argv) {
     }
 
     p->console       = console_init(allow_ctrlc, stdin, dromajo_stdout);
-    p->dump_memories = dump_memories;
 
     // Setup bootrom params
     if (bootrom_name)

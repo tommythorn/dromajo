@@ -182,8 +182,6 @@ typedef struct {
     uint64_t physical_addr_len;
 
     char *logfile;  // If non-zero, all output goes here, stderr and stdout
-
-    bool dump_memories;
 } VirtMachineParams;
 
 typedef struct VirtMachine {

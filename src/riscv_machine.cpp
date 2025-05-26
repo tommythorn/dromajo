@@ -1099,50 +1099,6 @@ uint8_t       dromajo_get_byte_direct(uint64_t paddr) {
     return *ptr;
 }
 
-static void dump_dram(RISCVMachine *s, FILE *f[16], const char *region, uint64_t start, uint64_t len) {
-    if (len == 0)
-        return;
-
-    assert(start % 1024 == 0);
-
-    uint64_t end = start + len;
-
-    fprintf(stderr, "Dumping %-10s [%016lx; %016lx) %6.2f MiB\n", region, start, end, len / (1024 * 1024.0));
-
-    /*
-      Bytes
-      0 ..31   memImage_dwrow0_even.hex:0-7
-      32..63   memImage_dwrow1_even.hex:0-7
-               memImage_dwrow2_even.hex:0-7
-               memImage_dwrow3_even.hex:0-7
-               memImage_derow0_even.hex:0-7
-               memImage_derow1_even.hex:0-7
-               memImage_derow2_even.hex:0-7
-               memImage_derow3_even.hex:0-7
-               memImage_dwrow0_odd.hex:0-7
-
-               memImage_dwrow0_even.hex:8-15? (Not verified, but that would be logical)
-
-      IOW,  16 banks of 64-bit wide memories, striped in cache sized (64B) blocks.  16 * 64 = 1 KiB
-
-
-      @00000000 0053c5634143b383
-    */
-
-    for (int line = (start - s->ram_base_addr) / 1024; start < end; ++line) {
-        for (int bank = 0; bank < 16; ++bank) {
-            for (int word = 0; word < 8; ++word) {
-                fprintf(f[bank],
-                        "@%08x %016lx\n",
-                        // Yes, this is mental
-                        (line % 8) * 0x01000000 + line / 8 * 8 + word,
-                        *(uint64_t *)get_ram_ptr(s, start));
-                start += sizeof(uint64_t);
-            }
-        }
-    }
-}
-
 extern DW_apb_uart_state *dw_apb_uart0;
 extern DW_apb_uart_state *dw_apb_uart1;
 
@@ -1352,44 +1308,6 @@ RISCVMachine *virt_machine_load(const VirtMachineParams *p, RISCVMachine *s) {
                            p->dtb_name,
                            p->cmdline))
         return NULL;
-
-    if (p->dump_memories) {
-        FILE *f = fopen("BootRAM.hex", "w+");
-        if (!f) {
-            vm_error("dromajo: %s: %s\n", "BootRAM.hex", strerror(errno));
-            return NULL;
-        }
-
-        uint8_t *ram_ptr = get_ram_ptr(s, ROM_BASE_ADDR);
-        for (int i = 0; i < ROM_SIZE / 4; ++i) {
-            uint32_t *q_base = (uint32_t *)(ram_ptr + (BOOT_BASE_ADDR - ROM_BASE_ADDR));
-            fprintf(f, "@%06x %08x\n", i, q_base[i]);
-        }
-
-        fclose(f);
-
-        {
-            FILE *f[16] = {0};
-
-            char hexname[60];
-            for (int i = 0; i < 16; ++i) {
-                snprintf(hexname, sizeof hexname, "memImage_d%crow%d_%s.hex", "we"[i / 4 % 2], i % 4, i / 8 == 0 ? "even" : "odd");
-                f[i] = fopen(hexname, "w");
-                if (!f[i]) {
-                    vm_error("dromajo: %s: %s\n", hexname, strerror(errno));
-                    return NULL;
-                }
-            }
-
-            dump_dram(s, f, "firmware", s->ram_base_addr, p->files[VM_FILE_BIOS].len);
-            dump_dram(s, f, "kernel", s->ram_base_addr + KERNEL_OFFSET, p->files[VM_FILE_KERNEL].len);
-            dump_dram(s, f, "initrd", s->initrd_start, p->files[VM_FILE_INITRD].len);
-
-            for (int i = 0; i < 16; ++i) {
-                fclose(f[i]);
-            }
-        }
-    }
 
     global_virt_machine = s;
 
